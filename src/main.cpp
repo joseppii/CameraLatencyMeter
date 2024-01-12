@@ -39,7 +39,7 @@ void setup() {
   pinMode(photoresistorPin, INPUT);
   pinMode(ledPin, OUTPUT);
   pinMode(0, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(interruptPin), ledTurnedOn, RISING);
+  //attachInterrupt(digitalPinToInterrupt(interruptPin), ledTurnedOn, RISING);
   delay(100);
   
   TB.neopixelPin = PIN_NEOPIXEL;
@@ -73,33 +73,44 @@ Serial.println("Press the button to start the measurement...");
   while (digitalRead(interruptPin) == LOW) {
     delay(10);
   }
-  int photo= analogRead(photoresistorPin);
-  Serial.print(photo);
-// Button pressed, start the measurement
+
+  // Button pressed, start the measurement
   Serial.println("Button pressed! Measurement started.");
 
-  // Turn on the LED
-  digitalWrite(ledPin, HIGH);
+  unsigned long sum = 0;
+  int repetitions = 100;
+
+  for (int i=0; i<repetitions; i++){
+    // Turn on the LED
+    digitalWrite(ledPin, HIGH);
+    ledTurnedOn();
   
+    // Wait for the photoresistor to detect the LED change
+    while (ledOn && analogRead(photoresistorPin) > 3700) {
+      Serial.print("Photoresitor value: ");
+      Serial.println(analogRead(photoresistorPin));
+      delayMicroseconds(10);
+    }
+    photoresistorTime = micros();
+    // Turn off the LED
+    digitalWrite(ledPin, LOW);
 
-// Wait for the photoresistor to detect the LED change
-  while (ledOn && analogRead(photoresistorPin) > 500) {
-    delayMicroseconds(10);
+    // Calculate and print the time taken
+    unsigned long responseTime = photoresistorTime - ledOnTime;
+    Serial.print("Photoresistor response time: ");
+    Serial.print(responseTime);
+    Serial.println(" microseconds");
+    sum += responseTime/1000;
+
+    ledOn = false;
+    ledOnTime = 0;
+    photoresistorTime = 0;
+    // Wait for a brief moment before allowing another measurement
+    delay(500);
+    //return;
   }
-  photoresistorTime = micros();
-  // Turn off the LED
-  digitalWrite(ledPin, LOW);
-
-  // Calculate and print the time taken
-  unsigned long responseTime = photoresistorTime - ledOnTime;
-  Serial.print("Photoresistor response time: ");
-  Serial.print(responseTime);
-  Serial.println(" microseconds");
-
-  ledOn = false;
-  ledOnTime = 0;
-  photoresistorTime = 0;
-  // Wait for a brief moment before allowing another measurement
-  delay(500);
+  Serial.print("Mean: ");
+  Serial.print(sum/repetitions);
+  Serial.println(" [ms]");
   return;
 }
